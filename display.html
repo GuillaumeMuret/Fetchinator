@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Images</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+    }
+    
+    .image-container {
+      width: 100%;
+      display: flex;
+      flex-wrap: wrap;
+    }
+    
+    .image-container img {
+      width: 100%;
+      height: auto;
+      object-fit: cover;
+    }
+  </style>
+</head>
+<body>
+  <div class="image-container"></div>
+
+  <script>
+    window.addEventListener('DOMContentLoaded', function() {
+      fetchImages('fetched');
+    });
+    function fetchImages(directoryPath) {
+      fetch(directoryPath)
+        .then(function(response) {
+          return response.text();
+        })
+        .then(function(html) {
+          var parser = new DOMParser();
+          var doc = parser.parseFromString(html, 'text/html');
+          
+          // Get all the image tags
+          var imageTags = doc.getElementsByTagName('a');
+          var imageContainer = document.querySelector('.image-container');
+          
+          // Iterate over the image tags and append them to the container
+          for (var i = 0; i < imageTags.length; i++) {
+            var image = document.createElement('img');
+            image.src = directoryPath + "/" + imageTags[i].getAttribute('href');
+            imageContainer.appendChild(image);
+          }
+        });
+    }
+  </script>
+</body>
+</html>
