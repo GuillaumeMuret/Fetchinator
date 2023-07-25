@@ -1,6 +1,8 @@
-fetched*
 .DS_Store
+.envrc
+.env.*
+/.idea
+/fetched*
 node_modules
 error.txt
-.env.*
 display_*
