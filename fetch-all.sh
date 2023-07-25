@@ -20,6 +20,7 @@ get_prefixed_number() {
 clean() {
     rm -rf ${SCRIPT_DIR}/${OUTPUT_DIR_NAME}
     rm -rf ${SCRIPT_DIR}/pdf
+    rm -rf ${SCRIPT_DIR}/display_*
 }
 
 show_help() {
@@ -72,18 +73,31 @@ fetch_chapter_num() {
     ITERATOR_CHAPTER=$3
     ITERATOR_LINK=0
     export URL_TO_FETCH=${URL_PREFIX}${ITERATOR_CHAPTER}${BASE_URL_SUFFIX}
-    LIST=$(curl -s -L ${URL_TO_FETCH} | grep https | grep -E '(jpg|jpeg)' | grep image-)
+    echo $URL_TO_FETCH
+    clear
+    LIST=$(curl -s -L ${URL_TO_FETCH} | grep https | grep -E '(webp)' | grep -oE '<meta property="og:image" content="https.*Tower Of God')
+    echo $LIST
+    if [[ -z $LIST ]]; then
+        LIST=$(curl -s -L ${URL_TO_FETCH} | grep -oE '<a href="https://blogger.googleusercontent.com/img/[a-zA-Z0-9]*/[a-zA-Z0-9_-]*=[a-zA-Z0-9_-]*" ')
+    fi
+    if [[ -z $LIST ]]; then
+        LIST=$(curl -s -L ${URL_TO_FETCH} | grep https | grep -E '(jpg|jpeg)' | grep -oE '<meta property="og:image" content="https.*Tower Of God')
+    fi
+    if [[ -z $LIST ]]; then
+        LIST=$(curl -s -L ${URL_TO_FETCH} | grep https | grep -E '(jpg|jpeg)' | grep image-)
+    fi
     if [[ -z $LIST ]]; then
         LIST=$(curl -s -L ${URL_TO_FETCH} | grep https | grep -E '(jpg|jpeg)' | grep img)
     fi
-    IFS=$'\n'
+    IFS=$'<'
     for DIV in $LIST; do
         NEW_DIV=https$(echo "${DIV#*https}")
         LINK=$(echo "${NEW_DIV%%\"*}")
+        echo $LINK
         NUM_CAPTURE=$(get_prefixed_number $ITERATOR_LINK)
-        RELATIVE_OUTPUT_FILE="${CHAPTER_NUM}-${NUM_CAPTURE}.jpg"
+        RELATIVE_OUTPUT_FILE="${CHAPTER_NUM}-${NUM_CAPTURE}.webp"
         OUTPUT_FILE="${OUTPUT_DIR}/${RELATIVE_OUTPUT_FILE}"
-        curl -s $LINK --output "${OUTPUT_FILE}"
+        curl -s $LINK --output "${OUTPUT_FILE}" &
         ITERATOR_LINK=$((ITERATOR_LINK+1))
     done
 }
@@ -92,17 +106,19 @@ run_script() {
     echo "Running the script..."
     check_env
     mkdir -p ${OUTPUT_DIR}
-    for ((ITERATOR_CHAPTER=0; ITERATOR_CHAPTER<=${MAX_ITERATOR}; ITERATOR_CHAPTER++)); do
+    for ((ITERATOR_CHAPTER=${MIN_ITERATOR}; ITERATOR_CHAPTER<=${MAX_ITERATOR}; ITERATOR_CHAPTER++)); do
         CHAPTER_NUM=$(get_prefixed_number ${ITERATOR_CHAPTER})
         echo $CHAPTER_NUM
         LIST=$(ls -lah ${OUTPUT_DIR} | grep "${CHAPTER_NUM}-")
         if [[ -z $LIST ]] ; then
             fetch_chapter_num ${CHAPTER_NUM} ${BASE_URL_PREFIX_1} ${ITERATOR_CHAPTER}
+            sleep 1
         fi
         LIST=$(ls -lah ${OUTPUT_DIR} | grep "${CHAPTER_NUM}-")
         if [[ -z $LIST ]] ; then
             echo "ERROR BASE_URL_PREFIX_1 $CHAPTER_NUM" >> error.txt
             fetch_chapter_num ${CHAPTER_NUM} ${BASE_URL_PREFIX_2} ${ITERATOR_CHAPTER}
+            sleep 1
         fi
         LIST=$(ls -lah ${OUTPUT_DIR} | grep "${CHAPTER_NUM}-")
         if [[ -z $LIST ]] ; then
@@ -113,9 +129,9 @@ run_script() {
 
 pdf() {
     IMAGES_HTML_TO_ADD=""
-    CHAPTER_FROM=$(get_prefixed_number 0)
+    CHAPTER_FROM=$(get_prefixed_number ${MIN_ITERATOR})
     mkdir -p ${OUTPUT_PDF_DIR}
-    for ((ITERATOR_CHAPTER=0; ITERATOR_CHAPTER<=${MAX_ITERATOR}; ITERATOR_CHAPTER++)); do
+    for ((ITERATOR_CHAPTER=${MIN_ITERATOR}; ITERATOR_CHAPTER<=${MAX_ITERATOR}; ITERATOR_CHAPTER++)); do
         CHAPTER_NUM=$(get_prefixed_number ${ITERATOR_CHAPTER})
         LIST=$(ls ${OUTPUT_DIR} | grep ${CHAPTER_NUM}-)
         if [[ -z $LIST ]]; then
@@ -123,7 +139,6 @@ pdf() {
         else
             IFS=$'\n'
             for IMAGES in $LIST; do
-                OUTPUT_FILE="${OUTPUT_DIR}/${RELATIVE_OUTPUT_FILE}"
                 IMAGES_HTML_TO_ADD="${IMAGES_HTML_TO_ADD}<img src=\"./${OUTPUT_DIR_NAME}/${IMAGES}\">"
             done
 

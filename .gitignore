@@ -3,4 +3,5 @@ fetched*
 node_modules
 error.txt
 .env.*
+pdf/
 display_*
